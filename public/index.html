@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthNearby AI — Powered by Notion MCP</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e8e8e8; height: 100vh; display: flex; flex-direction: column; }
+
+    header { background: #1a1d2e; border-bottom: 1px solid #2a2d3e; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+    .logo { width: 36px; height: 36px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .header-text h1 { font-size: 16px; font-weight: 700; color: #fff; }
+    .header-text p  { font-size: 12px; color: #6b7280; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .notion-badge { background: #2a2d3e; border: 1px solid #3a3d4e; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #9ca3af; display: flex; align-items: center; gap: 6px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+    .lang-toggle { background: #2a2d3e; border: 1px solid #3a3d4e; border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #9ca3af; cursor: pointer; transition: all 0.15s; }
+    .lang-toggle:hover { border-color: #10b981; color: #10b981; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    .mcp-panel { width: 300px; background: #1a1d2e; border-right: 1px solid #2a2d3e; display: flex; flex-direction: column; }
+    .mcp-header { padding: 12px 16px; border-bottom: 1px solid #2a2d3e; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; justify-content: space-between; }
+    .mcp-count { background: #10b981; color: #000; border-radius: 10px; padding: 1px 7px; font-size: 10px; font-weight: 700; }
+    .mcp-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+    /* AI Decision block */
+    .ai-decision { background: #0d1f17; border: 1px solid #10b981; border-radius: 10px; padding: 12px; font-size: 11px; }
+    .ai-decision .ai-title { color: #10b981; font-weight: 700; font-size: 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .ai-decision .ai-step { color: #d1fae5; font-size: 11px; padding: 2px 0; display: flex; gap: 6px; }
+    .ai-decision .ai-step::before { content: "→"; color: #10b981; flex-shrink: 0; }
+
+    /* MCP Actions block */
+    .mcp-entry { background: #0f1117; border: 1px solid #2a2d3e; border-radius: 10px; padding: 12px; font-size: 11px; }
+    .mcp-entry .tool-name { color: #f59e0b; font-weight: 600; font-family: monospace; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .mcp-entry .mcp-steps { display: flex; flex-direction: column; gap: 3px; }
+    .mcp-entry .mcp-step { color: #9ca3af; font-size: 10px; display: flex; gap: 6px; font-family: monospace; }
+    .mcp-entry .mcp-step::before { content: "⚡"; flex-shrink: 0; }
+    .mcp-entry .tool-result { color: #6ee7b7; font-size: 10px; margin-top: 6px; padding-top: 6px; border-top: 1px solid #2a2d3e; font-family: monospace; }
+    .mcp-entry .timestamp { color: #4b5563; font-size: 9px; margin-top: 6px; }
+
+    /* Best pick card */
+    .best-pick { background: linear-gradient(135deg, #0d1f17, #0f1117); border: 1px solid #10b981; border-radius: 10px; padding: 12px; font-size: 11px; }
+    .best-pick .pick-title { color: #fbbf24; font-weight: 700; font-size: 12px; margin-bottom: 8px; }
+    .best-pick .pick-name { color: #fff; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .best-pick .pick-reason { color: #9ca3af; font-size: 10px; display: flex; gap: 5px; padding: 1px 0; }
+    .best-pick .pick-reason::before { content: "✓"; color: #10b981; }
+
+    .mcp-empty { color: #4b5563; font-size: 12px; text-align: center; margin-top: 20px; line-height: 1.8; }
+
+    .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    .quick-prompts { padding: 12px 20px; display: flex; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #2a2d3e; }
+    .quick-btn { background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 20px; padding: 5px 12px; font-size: 12px; color: #9ca3af; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .quick-btn:hover { background: #252840; border-color: #10b981; color: #10b981; }
+    .quick-btn.fr { display: none; }
+
+    .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .message { display: flex; gap: 10px; max-width: 85%; }
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message.assistant { align-self: flex-start; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .message.user .avatar     { background: #1d4ed8; }
+    .message.assistant .avatar { background: linear-gradient(135deg, #10b981, #059669); }
+    .bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.7; max-width: 100%; white-space: pre-wrap; word-break: break-word; }
+    .message.user .bubble      { background: #1d4ed8; color: #fff; border-bottom-right-radius: 4px; }
+    .message.assistant .bubble { background: #1a1d2e; border: 1px solid #2a2d3e; color: #e8e8e8; border-bottom-left-radius: 4px; }
+
+    /* IMPROVEMENT 5: Notion verify button */
+    .notion-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; background: #2a2d3e; border: 1px solid #3a3d4e; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #10b981; text-decoration: none; transition: all 0.15s; }
+    .notion-link:hover { background: #10b981; color: #000; }
+
+    .typing { display: flex; gap: 4px; padding: 14px 16px; }
+    .typing span { width: 7px; height: 7px; background: #10b981; border-radius: 50%; animation: bounce 1.2s infinite; }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+    .welcome { text-align: center; padding: 40px 20px; color: #4b5563; }
+    .welcome .icon { font-size: 48px; margin-bottom: 12px; }
+    .welcome h2 { font-size: 20px; color: #9ca3af; margin-bottom: 8px; }
+    .welcome p  { font-size: 14px; line-height: 1.6; }
+
+    .input-area { padding: 16px 20px; border-top: 1px solid #2a2d3e; display: flex; gap: 10px; align-items: flex-end; }
+    textarea { flex: 1; background: #1a1d2e; border: 1px solid #2a2d3e; border-radius: 12px; padding: 12px 16px; font-size: 14px; color: #e8e8e8; resize: none; outline: none; max-height: 120px; font-family: inherit; transition: border-color 0.15s; }
+    textarea:focus { border-color: #10b981; }
+    textarea::placeholder { color: #4b5563; }
+    button#send { background: #10b981; border: none; border-radius: 12px; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; transition: background 0.15s; flex-shrink: 0; }
+    button#send:hover { background: #059669; }
+    button#send:disabled { background: #374151; cursor: not-allowed; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏥</div>
+  <div class="header-text">
+    <h1>HealthNearby AI</h1>
+    <p>Healthcare Facility Agent — Cameroon</p>
+  </div>
+  <div class="header-right">
+    <button class="lang-toggle" onclick="toggleLang()" id="langBtn">🇫🇷 Français</button>
+    <div class="notion-badge">
+      <div class="dot"></div>
+      Notion MCP Live
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="mcp-panel">
+    <div class="mcp-header">
+      🧠 AI Actions
+      <span class="mcp-count" id="mcpCount">0</span>
+    </div>
+    <div class="mcp-log" id="mcpLog">
+      <div class="mcp-empty">AI decisions and MCP calls will appear here in real-time.<br><br>Every action goes through Notion MCP.</div>
+    </div>
+  </div>
+
+  <div class="chat-area">
+    <div class="quick-prompts" id="quickPrompts">
+      <!-- EN -->
+      <button class="quick-btn en" onclick="send('Find an open pharmacy in Douala that accepts MTN MoMo right now')">🌙 Open pharmacy + MoMo</button>
+      <button class="quick-btn en" onclick="send('Show all on-duty facilities in Douala')">🚨 On-duty facilities</button>
+      <button class="quick-btn en" onclick="send('Mark Pharmacie de Garde Nkongmondo as closed')">🔄 Update status</button>
+      <button class="quick-btn en" onclick="send('Add a new pharmacy: Pharmacie Espoir, Bastos Yaoundé, accepts MoMo and Orange Money, open 08:00-22:00')">➕ Add facility</button>
+      <button class="quick-btn en" onclick="send('What hospitals are open right now in Yaoundé?')">🏥 Hospitals open now</button>
+      <!-- FR -->
+      <button class="quick-btn fr" onclick="send('Trouver une pharmacie ouverte à Douala qui accepte MTN MoMo maintenant')">🌙 Pharmacie ouverte + MoMo</button>
+      <button class="quick-btn fr" onclick="send('Montrer les établissements de garde à Douala')">🚨 Pharmacies de garde</button>
+      <button class="quick-btn fr" onclick="send('Marquer la Pharmacie de Garde Nkongmondo comme fermée')">🔄 Mettre à jour</button>
+      <button class="quick-btn fr" onclick="send('Ajouter une nouvelle pharmacie: Pharmacie Espoir, Bastos Yaoundé, accepte MoMo et Orange Money, ouverte 08:00-22:00')">➕ Ajouter un établissement</button>
+      <button class="quick-btn fr" onclick="send('Quels hôpitaux sont ouverts maintenant à Yaoundé ?')">🏥 Hôpitaux ouverts</button>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="welcome">
+        <div class="icon">🤖</div>
+        <h2 id="welcomeTitle">HealthNearby AI Agent</h2>
+        <p id="welcomeText">Ask me to find, update, or add healthcare facilities.<br>Every action goes through <strong style="color:#10b981">Notion MCP</strong> in real-time.</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <textarea id="input" placeholder="Find an open pharmacy that accepts MTN MoMo..." rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button id="send" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const messagesEl = document.getElementById('messages');
+  const mcpLogEl   = document.getElementById('mcpLog');
+  const inputEl    = document.getElementById('input');
+  const sendBtn    = document.getElementById('send');
+  const mcpCountEl = document.getElementById('mcpCount');
+
+  let welcomeShown = true;
+  let mcpTotal = 0;
+  let currentLang = 'en';
+
+  // IMPROVEMENT 4: Language toggle
+  function toggleLang() {
+    currentLang = currentLang === 'en' ? 'fr' : 'en';
+    const btn = document.getElementById('langBtn');
+    btn.textContent = currentLang === 'en' ? '🇫🇷 Français' : '🇬🇧 English';
+
+    document.querySelectorAll('.quick-btn.en').forEach(b => b.style.display = currentLang === 'en' ? 'inline-block' : 'none');
+    document.querySelectorAll('.quick-btn.fr').forEach(b => b.style.display = currentLang === 'fr' ? 'inline-block' : 'none');
+
+    const title = document.getElementById('welcomeTitle');
+    const text  = document.getElementById('welcomeText');
+    const ph    = document.getElementById('input');
+
+    if (currentLang === 'fr') {
+      if (title) title.textContent = 'Agent HealthNearby AI';
+      if (text)  text.innerHTML = 'Demandez-moi de trouver, mettre à jour ou ajouter des établissements de santé.<br>Chaque action passe par <strong style="color:#10b981">Notion MCP</strong> en temps réel.';
+      ph.placeholder = 'Trouver une pharmacie ouverte qui accepte MTN MoMo...';
+    } else {
+      if (title) title.textContent = 'HealthNearby AI Agent';
+      if (text)  text.innerHTML = 'Ask me to find, update, or add healthcare facilities.<br>Every action goes through <strong style="color:#10b981">Notion MCP</strong> in real-time.';
+      ph.placeholder = 'Find an open pharmacy that accepts MTN MoMo...';
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  function send(text) { inputEl.value = text; sendMessage(); }
+
+  function addMessage(role, text, notionUrl = null) {
+    if (welcomeShown) { messagesEl.innerHTML = ''; welcomeShown = false; }
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'user' ? '👤' : '🤖';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    // IMPROVEMENT 5: Notion verify button
+    if (notionUrl && role === 'assistant') {
+      const br = document.createElement('br');
+      const link = document.createElement('a');
+      link.href = notionUrl;
+      link.target = '_blank';
+      link.className = 'notion-link';
+      const linkLabel = currentLang === 'fr'
+        ? '🔗 Vérifier dans Notion (base live)'
+        : '🔗 Verify in Notion (live database)';
+      link.textContent = linkLabel;
+      const note = document.createElement('span');
+      note.style.cssText = 'display:block;font-size:10px;color:#6b7280;margin-top:3px;';
+      note.textContent = currentLang === 'fr'
+        ? 'Mise à jour exécutée en temps réel via MCP'
+        : 'This update was executed in real-time via MCP';
+      bubble.appendChild(note);
+      bubble.appendChild(br);
+      bubble.appendChild(link);
+    }
+
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function addTyping() {
+    if (welcomeShown) { messagesEl.innerHTML = ''; welcomeShown = false; }
+    const div = document.createElement('div');
+    div.className = 'message assistant'; div.id = 'typing';
+    div.innerHTML = `<div class="avatar">🤖</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() { document.getElementById('typing')?.remove(); }
+
+  function addAIDecision(actions, facilities) {
+    const empty = mcpLogEl.querySelector('.mcp-empty');
+    if (empty) empty.remove();
+
+    // AI Decision block
+    const aiDiv = document.createElement('div');
+    aiDiv.className = 'ai-decision';
+    const steps = [];
+
+    actions.forEach(a => {
+      const input = a.input || {};
+      if (a.tool.includes('query')) {
+        const total = a.raw_response?.total || '?';
+        steps.push(`Queried Notion — ${total} records found`);
+        if (input.filter?.select?.equals) steps.push(`Filtered by city: ${input.filter.select.equals}`);
+        if (input.filter?.and) {
+          input.filter.and.forEach(f => {
+            if (f.property === 'City') steps.push(`Filtered by city: ${f.select?.equals}`);
+            if (f.property === 'Type') steps.push(`Filtered by type: ${f.select?.equals}`);
+            if (f.property === 'Accepts_MTN_MoMo') steps.push('Filtered: MTN MoMo only');
+            if (f.property === 'Accepts_Orange_Money') steps.push('Filtered: Orange Money only');
+            if (f.property === 'Is_On_Duty') steps.push('Filtered: On-duty only');
+          });
+        }
+        if (input.filter?.property === 'Accepts_MTN_MoMo') steps.push('Filtered: MTN MoMo only');
+        if (input.filter?.property === 'Is_On_Duty') steps.push('Filtered: On-duty only');
+      }
+      if (a.tool.includes('update')) steps.push(`Updated page in Notion — status changed`);
+      if (a.tool.includes('create')) steps.push(`Created new page in Notion`);
+    });
+
+    const label = currentLang === 'fr' ? 'Décision IA' : 'AI Decision';
+    aiDiv.innerHTML = `<div class="ai-title">🧠 ${label}</div>` +
+      steps.map(s => `<div class="ai-step">${escapeHtml(s)}</div>`).join('');
+    mcpLogEl.prepend(aiDiv);
+
+    // MCP Actions block
+    const mcpDiv = document.createElement('div');
+    mcpDiv.className = 'mcp-entry';
+    const now = new Date().toLocaleTimeString();
+    const mcpLabel = currentLang === 'fr' ? 'Actions MCP' : 'MCP Actions';
+    const resultStr = actions[actions.length-1]?.raw_response
+      ? JSON.stringify(actions[actions.length-1].raw_response) : '';
+
+    mcpDiv.innerHTML = `<div class="tool-name">⚙️ ${mcpLabel}</div>
+      <div class="mcp-steps">` +
+      actions.map(a => `<div class="mcp-step">${escapeHtml(a.tool)}</div>`).join('') +
+      `</div>` +
+      (resultStr ? `<div class="tool-result">← ${escapeHtml(resultStr)}</div>` : '') +
+      `<div class="timestamp">${now}</div>`;
+    mcpLogEl.prepend(mcpDiv);
+
+    mcpTotal += actions.length;
+    mcpCountEl.textContent = mcpTotal;
+  }
+
+  function addMcpEntry(action) {
+    // kept for compatibility — handled by addAIDecision now
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function addBestPick(pick) {
+    const div = document.createElement('div');
+    div.className = 'best-pick';
+    const title = currentLang === 'fr' ? '⭐ Meilleur choix recommandé' : '⭐ Best Recommended Choice';
+    div.innerHTML = `<div class="pick-title">${title}</div>
+      <div class="pick-name">🏥 ${escapeHtml(pick.name)}</div>
+      <div style="color:#6b7280;font-size:11px;margin-bottom:6px;">📍 ${escapeHtml(pick.neighborhood)}, ${escapeHtml(pick.city)} · 📞 ${escapeHtml(pick.phone || 'N/A')}</div>` +
+      pick.reasons.map(r => `<div class="pick-reason">${escapeHtml(r)}</div>`).join('');
+
+    // Insert before messages area content
+    const msgArea = document.getElementById('messages');
+    msgArea.appendChild(div);
+    msgArea.scrollTop = msgArea.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const msg = inputEl.value.trim();
+    if (!msg || sendBtn.disabled) return;
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+    addMessage('user', msg);
+    addTyping();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      const data = await res.json();
+      removeTyping();
+
+      if (data.error) {
+        addMessage('assistant', '❌ Error: ' + data.error);
+      } else {
+        if (data.mcpActions?.length) addAIDecision(data.mcpActions, []);
+        if (data.bestPick) addBestPick(data.bestPick);
+        addMessage('assistant', data.response, data.notionUrl);
+      }
+    } catch (err) {
+      removeTyping();
+      addMessage('assistant', '❌ Connection error. Is the server running?');
+    }
+
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+
+  // Init: show EN buttons
+  document.querySelectorAll('.quick-btn.en').forEach(b => b.style.display = 'inline-block');
+  document.querySelectorAll('.quick-btn.fr').forEach(b => b.style.display = 'none');
+</script>
+</body>
+</html>
