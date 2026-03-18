@@ -1,8 +1,9 @@
 # 🏥 HealthNearby AI — Notion MCP Healthcare Agent
 
-> **A live AI operating system for healthcare data in Cameroon, powered by Notion MCP.**
+> **This is not a chatbot.**
+> **This is a live AI system that reads, updates, and controls real-world healthcare data.**
 
-Built for the [Notion MCP Challenge](https://dev.to/challenges/notion-2026-03-04) on DEV Community.
+Built for the [Notion MCP Challenge](https://dev.to/challenges/notion-2026-03-04)
 
 ---
 
@@ -10,128 +11,112 @@ Built for the [Notion MCP Challenge](https://dev.to/challenges/notion-2026-03-04
 
 It is 11 PM in Bépanda, Douala, Cameroon.
 
-A mother's 4-year-old son has a fever that won't break. She needs a pharmacy — open right now, that accepts MTN Mobile Money, because she has no cash at home.
+A mother's 4-year-old son has a fever that won't break.
 
-She has no app to check. No website to search. She starts calling neighbors.
+She needs a pharmacy — open right now, that accepts MTN Mobile Money.
+
+She has no app. No website. No information.
+
+She starts calling neighbors. Walking in the dark.
 
 **HealthNearby AI was built to end that walk.**
 
 ---
 
-## What It Does
+## What Makes This Different
 
-HealthNearby AI is a conversational agent that uses **Notion as a live operational brain** for 200 healthcare facilities across 6 Cameroonian cities.
+Most AI projects **answer questions**.
 
-Every action — query, update, create — goes through **Notion MCP** in real-time.
+**This system acts.**
 
-### Three core capabilities:
+Using Notion MCP, the AI can:
 
-**🔍 Query** — Find facilities instantly
+- 🔍 Query real healthcare data
+- 🔄 Update facility status live
+- ➕ Create new facilities instantly
+
+All actions happen **inside Notion in real time**.
+
+---
+
+## 🧠 The Core Idea
+
+> Notion is not a database.
+> It is a **live operational brain**.
+
+---
+
+## 🔁 The System Loop
+
+```
+User → AI Agent → Notion MCP → Notion DB → Response → Update
+```
+
+This creates a continuous loop:
+
+> **Read → Decide → Act → Update**
+
+If MCP is removed, the system stops working.
+
+---
+
+## 🎬 What It Does
+
+### 🔍 Query (Read via MCP)
 ```
 "Find an open pharmacy in Douala that accepts MTN MoMo right now"
-→ Agent queries Notion via MCP, filters in real-time
-→ Returns top results ranked by reliability score
 ```
+→ AI queries Notion via MCP
+→ Filters live data
+→ Returns best option ranked by reliability
 
-**🔄 Update** — Keep data alive
+---
+
+### 🔄 Update (Write via MCP)
 ```
 "Mark Pharmacie de Garde Nkongmondo as closed"
-→ Agent updates Notion via MCP
+```
+→ AI updates Notion in real time
 → Reliability score auto-adjusts
-```
-
-**➕ Create** — Expand the network
-```
-"Add a new pharmacy: Pharmacie Espoir, Bastos Yaoundé, accepts MoMo"
-→ Agent creates new Notion page via MCP
-→ Immediately searchable
-```
 
 ---
 
-## Why Notion MCP Is the Core
-
-Notion is not just a database here — it is the **operational brain** of the system.
-
-- MCP protocol connects the AI agent directly to Notion at runtime
-- Every read, write, and create happens through `@notionhq/notion-mcp-server` (22 tools)
-- If you remove MCP, the system collapses — it is not decorative
-
-**The loop:**
+### ➕ Create (Insert via MCP)
 ```
-User → Groq AI → Notion MCP → Notion DB → Real-time response
+"Add a new pharmacy: Pharmacie Espoir, Bastos Yaoundé"
 ```
+→ AI creates a new Notion entry
+→ Immediately available in search
 
 ---
 
-## Features
+## ⚙️ Why MCP Matters
+
+- Uses `@notionhq/notion-mcp-server` (22 tools)
+- Direct AI → Notion communication at runtime
+- No simulation — real data operations
+
+> Most projects use MCP to read data.
+> **HealthNearby uses MCP to operate a live system.**
+
+---
+
+## 💡 Key Features
 
 | Feature | Description |
 |---------|-------------|
-| 🔌 Real MCP Protocol | Uses `@notionhq/notion-mcp-server` — 22 Notion tools available |
-| ⏱️ Real-time Status | Open/closed computed from hours (Cameroon UTC+1) |
-| ⭐ Reliability Score | Auto-updates when facilities are marked incorrectly |
-| 🧠 AI Decision Panel | Shows AI reasoning + MCP calls in real-time |
-| 🌍 Bilingual | Automatic FR/EN detection and response |
-| 🔗 Notion Verify | Direct link to updated Notion page after every action |
-| 📊 200 Facilities | 6 Cameroonian cities |
+| 🔌 Real MCP Protocol | Full integration with 22 Notion tools |
+| ⏱️ Real-time Status | Open/closed computed from hours (UTC+1 Cameroon) |
+| ⭐ Reliability Score | Auto-updates based on data accuracy |
+| 🧠 AI Decision Panel | Shows reasoning + MCP actions in real-time |
+| 🌍 Bilingual | Auto-detects FR/EN |
+| 🔗 Verify in Notion | Every action visible in live database |
+| 📊 200 Facilities | 6 cities across Cameroon |
 | 💛 Mobile Money First | MTN MoMo + Orange Money as primary filters |
 
 ---
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| AI Agent | Groq (Llama 3.1-8b-instant) — free |
-| MCP Protocol | `@notionhq/notion-mcp-server` + `@modelcontextprotocol/sdk` |
-| Database | Notion (200 seeded facilities) |
-| Backend | Node.js + Express |
-| Frontend | Vanilla JS + CSS |
-
----
-
-## Setup
-
-### 1. Clone & install
-```bash
-git clone https://github.com/joanayissindong/healthnearby-ai.git
-cd healthnearby-ai
-npm install
-```
-
-### 2. Configure environment
-Create a `.env` file:
-```env
-NOTION_TOKEN=ntn_your_notion_token
-NOTION_DATABASE_ID=your_database_id
-GROQ_API_KEY=gsk_your_groq_key
-PORT=3000
-```
-
-### 3. Create your Notion database
-- Create a new full-page database in Notion
-- Connect your integration to the database
-- Copy the database ID from the URL
-
-### 4. Seed the database
-```bash
-npm run setup
-```
-
-### 5. Start the agent
-```bash
-npm start
-```
-
-### 6. Open the UI
-```
-http://localhost:3000
-```
-
----
-
-## Data Coverage
+## 🌍 Data Coverage
 
 | City | Facilities |
 |------|-----------|
@@ -145,13 +130,67 @@ http://localhost:3000
 
 ---
 
-## The Vision
+## 🧱 Tech Stack
 
-HealthNearby AI is the first building block of a healthcare information infrastructure for Central and West Africa — a platform where facilities self-register, update their own data, and where patients can always find care.
-
-The mother in Bépanda shouldn't have to walk in the dark.
+| Layer | Technology |
+|-------|-----------|
+| AI Agent | Groq (Llama 3.1-8b-instant) |
+| MCP Protocol | `@notionhq/notion-mcp-server` + `@modelcontextprotocol/sdk` |
+| Database | Notion (200 seeded facilities) |
+| Backend | Node.js + Express |
+| Frontend | Vanilla JS + CSS |
 
 ---
 
-Built with ❤️ from Yaoundé, Cameroon — **Joan Wilfried Ayissi Ndong**
-DEV Notion MCP Challenge, March 2026
+## 🚀 Setup
+
+```bash
+git clone https://github.com/joanayissindong/healthnearby-ai.git
+cd healthnearby-ai
+npm install
+```
+
+Configure `.env`:
+
+```
+NOTION_TOKEN=ntn_...
+NOTION_DATABASE_ID=...
+GROQ_API_KEY=gsk_...
+PORT=3000
+```
+
+Run:
+
+```bash
+npm run setup   # Creates schema + seeds 200 facilities
+npm start       # Starts the agent
+```
+
+Open → `http://localhost:3000`
+
+---
+
+## 🧠 The Insight
+
+The infrastructure already exists.
+The facilities exist. The payments exist.
+
+What's missing is accessible, real-time information.
+
+---
+
+## 🌍 The Vision
+
+HealthNearby AI is the foundation of a healthcare information system for Africa.
+
+A system where:
+- Facilities update themselves
+- Data stays alive
+- Patients always find care
+
+**The mother in Bépanda shouldn't have to walk in the dark.**
+
+---
+
+Built with ❤️ from Yaoundé, Cameroon
+**Joan Wilfried Ayissi Ndong** — DEV Notion MCP Challenge, March 2026
