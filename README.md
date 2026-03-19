@@ -3,6 +3,9 @@
 > **This is not a chatbot.**
 > **This is a live AI operating system that reads, updates, and controls real-world healthcare data — powered by Notion MCP.**
 
+🎥 **Demo Video:** *(coming soon)*
+📸 **Live App:** `http://localhost:3000` (after setup)
+
 Built for the [Notion MCP Challenge](https://dev.to/challenges/notion-2026-03-04) · DEV Community · March 2026
 
 ---
@@ -40,32 +43,66 @@ Remove MCP — the system stops working. It is not decorative.
 
 ---
 
+## Why This Project Stands Out
+
+- 🌍 **Real-world impact** — solves an urgent healthcare access problem in Cameroon, where 92.1% of people navigate the healthcare system entirely on their own
+- ⚙️ **True MCP integration** — not just reading data, but executing real actions (query, update, create) via `@notionhq/notion-mcp-server`
+- 🧠 **AI as a decision system** — recommends the best option based on real-time reliability + availability + payment method
+- 🔄 **Live system, not a static demo** — every action updates Notion in real-time, auto-syncs every 30 minutes
+- 🗺️ **Complete product experience** — interactive map, facility inspector, MCP timeline, AI decision panel, emergency mode
+
+> This is not a prototype.
+> This is a working system that could be deployed today.
+
+---
+
 ## The System Loop
 
 ```
 User → AI Agent (Groq) → Notion MCP (22 tools) → Notion DB → Real-time response
-         ↑                      ↓
+         ↑                        ↓
          └──── Read → Decide → Act → Update ────┘
+```
+
+This architecture ensures that:
+- The AI never invents data — every result comes from Notion
+- Every decision is grounded in real-time Notion data
+- Every action is traceable via the MCP Activity panel
+
+---
+
+## UI — 3-Column Cockpit
+
+```
+┌─────────────────┬──────────────────────┬──────────────────────┐
+│  MCP Activity   │    Chat + AI         │   Live Map           │
+│  Timeline       │    Decision Panel    │   Leaflet.js         │
+│  READ badges    │    Hero Card         │   🟢 Open pins       │
+│  UPDATE amber   │    Thinking steps    │   🟡 On-duty pins    │
+│  CREATE green   │    Best Pick card    │   🔴 Closed pins     │
+│  Execution ms   │    Streaming text    │   Click → Inspector  │
+└─────────────────┴──────────────────────┴──────────────────────┘
 ```
 
 ---
 
-## Live Features
+## Features
 
 | Feature | Description |
 |---------|-------------|
 | 🔌 **Real MCP Protocol** | `@notionhq/notion-mcp-server` via stdio — 22 Notion tools |
-| ⏱️ **Real-time Status** | Open/closed computed from hours (Cameroon UTC+1) — no cron job |
-| 🔄 **Auto-sync** | Server syncs all 200 facilities' status to Notion on startup + every 30 min |
-| ⭐ **Reliability Score** | Auto-decreases when a facility is wrongly marked closed during open hours |
-| 🧠 **AI Decision Panel** | Shows AI reasoning steps + MCP calls + execution time in real-time |
-| 🚨 **Emergency Mode** | One click → UI turns red, auto-searches on-duty pharmacies open NOW |
-| 🌍 **Bilingual** | Automatic FR/EN detection — responds in the user's language |
-| 🔗 **Verify in Notion** | Direct link to the exact updated Notion page after every action |
-| 🏥 **Facility Inspector** | Live right-panel with full details, hours, payments, action buttons |
-| 🎬 **Splash Screen** | MCP connection animation on load — shows the system initializing |
-| 💡 **Welcome Modal** | 3 guided demo scenarios — judges can explore with 1 click |
-| 📊 **200 Facilities** | 6 Cameroonian cities, 5 facility types |
+| ⏱️ **Real-time Status** | Open/closed computed from Cameroon hours (UTC+1) — no cron job |
+| 🔄 **Auto-sync** | Syncs all 200 facilities' status to Notion on startup + every 30 min |
+| ⭐ **Reliability Score** | Auto-decreases when a facility is wrongly marked closed |
+| 🗺️ **Interactive Map** | Leaflet.js map with 🟢🟡🔴 pins — click any pin for full details |
+| 🏥 **Facility Inspector** | Live panel with hours, payments, reliability, call + action buttons |
+| 🧠 **AI Decision Panel** | Shows reasoning steps + MCP calls + execution time in ms |
+| 🚨 **Emergency Mode** | One click → red UI, auto-searches on-duty pharmacies across all of Cameroon |
+| 🌍 **Bilingual** | Auto-detects FR/EN — responds in the user's language |
+| 🔗 **Verify in Notion** | Direct link to the exact Notion page after every update/create |
+| 🎬 **Splash Screen** | MCP connection animation on load — system feels alive |
+| 💡 **Welcome Modal** | 3 guided demo scenarios — judges explore with 1 click |
+| 📊 **200 Facilities** | 6 cities, 5 types: hospitals, clinics, pharmacies, labs, health centers |
 | 💛 **Mobile Money First** | MTN MoMo + Orange Money as primary filters — not an afterthought |
 
 ---
@@ -75,36 +112,35 @@ User → AI Agent (Groq) → Notion MCP (22 tools) → Notion DB → Real-time r
 ### 🔍 Query (Read via MCP)
 ```
 "Find an open pharmacy in Douala that accepts MTN MoMo right now"
-→ Agent queries Notion via MCP
-→ Filters by city + payment + real-time computed open status
-→ Returns top results ranked by reliability score
-→ Shows best recommendation with call button
+→ Queries Notion via MCP
+→ Filters by city + payment + real-time open status
+→ Returns top 5 ranked by reliability + Hero Card
+→ Map updates with colored pins
 ```
 
 ### 🔄 Update (Write via MCP)
 ```
 "Mark Pharmacie de Garde Nkongmondo as closed"
-→ Agent finds exact match in Notion DB
-→ Updates Is_Open_Now + Is_On_Duty via direct API
-→ Auto-adjusts reliability score if closed during open hours
-→ Returns Notion page link for live verification
+→ Finds exact match in Notion DB
+→ Updates Is_Open_Now in Notion via API
+→ Auto-adjusts reliability score
+→ Returns direct Notion page link for live verification
 ```
 
 ### ➕ Create (Insert via MCP)
 ```
-"Add a new pharmacy: Pharmacie Espoir, Bastos Yaoundé, accepts MoMo and Orange Money"
+"Add a new pharmacy: Pharmacie Espoir, Bastos Yaoundé, accepts MoMo"
 → AI extracts structured data from natural language
 → Creates new Notion page with all properties
-→ Immediately searchable in the system
-→ Returns Notion page link to verify
+→ Immediately searchable and appears on map
 ```
 
 ### 🚨 Emergency Mode
 ```
-Click the URGENCE button
-→ UI turns red
-→ Auto-searches on-duty pharmacies open NOW
-→ "This is not a demo. This is life-saving."
+Click URGENCE button
+→ UI turns red with glow effect
+→ Auto-searches ALL on-duty pharmacies open NOW across Cameroon
+→ Map shows amber pins only — on-duty facilities
 ```
 
 ---
@@ -116,8 +152,9 @@ Click the URGENCE button
 | AI Agent | Groq — Llama 3.1-8b-instant (free) |
 | MCP Protocol | `@notionhq/notion-mcp-server` + `@modelcontextprotocol/sdk` |
 | Database | Notion (200 seeded facilities) |
+| Map | Leaflet.js (OpenStreetMap) |
 | Backend | Node.js + Express |
-| Frontend | Vanilla JS + CSS (3-column cockpit UI) |
+| Frontend | Vanilla JS + CSS (3-column cockpit) |
 
 ---
 
@@ -140,14 +177,14 @@ PORT=3000
 
 ### 3. Create your Notion database
 - Create a new full-page database in Notion
-- Go to **Settings → Integrations** and connect **HealthNearby AI**
+- Connect your **HealthNearby AI** integration
 - Copy the database ID from the URL
 
 ### 4. Seed the database
 ```bash
 npm run setup
 ```
-Creates the full schema + seeds 200 healthcare facilities across 6 cities.
+Creates schema + seeds 200 healthcare facilities across 6 cities.
 
 ### 5. Start the agent
 ```bash
@@ -156,9 +193,9 @@ npm start
 On startup:
 - Connects to Notion MCP server (22 tools)
 - Syncs real-time open/closed status for all 200 facilities
-- Starts syncing every 30 minutes automatically
+- Auto-syncs every 30 minutes
 
-### 6. Open the UI
+### 6. Open
 ```
 http://localhost:3000
 ```
@@ -167,47 +204,27 @@ http://localhost:3000
 
 ## Data Coverage
 
-| City | Facilities | Types |
-|------|-----------|-------|
-| Douala | 70 | Hospitals, Clinics, Pharmacies, Labs, Health Centers |
-| Yaoundé | 50 | Same categories |
-| Bafoussam | 25 | Same categories |
-| Bamenda | 25 | Same categories |
-| Garoua | 15 | Same categories |
-| Maroua | 15 | Same categories |
-| **Total** | **200** | **5 types** |
+| City | Facilities |
+|------|-----------|
+| Douala | 70 |
+| Yaoundé | 50 |
+| Bafoussam | 25 |
+| Bamenda | 25 |
+| Garoua | 15 |
+| Maroua | 15 |
+| **Total** | **200** |
+
+Types: Hospitals · Clinics · Pharmacies · Laboratories · Health Centers
 
 ---
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                  HealthNearby AI                     │
-├──────────────┬──────────────────┬───────────────────┤
-│  MCP Activity│   Chat + AI      │ Facility Inspector │
-│  Timeline    │   Decision Panel │ Live details       │
-│  READ badges │   Hero Card      │ Action buttons     │
-│  UPDATE      │   Streaming      │ Call / Mark / Find │
-│  CREATE      │   Best Pick      │                   │
-└──────────────┴──────────────────┴───────────────────┘
-         ↕                  ↕
-   Notion MCP          Groq AI API
-   (22 tools)       (Llama 3.1-8b)
-         ↕
-   Notion Database
-   (200 facilities)
-```
-
----
-
-## Why MCP Matters Here
+## Why MCP Is the Core
 
 > "Most projects use MCP to read data.
 > HealthNearby uses MCP to operate a live system."
 
-- `API-query-data-source` → real-time facility search
-- `API-patch-page` → live status updates
+- `API-query-data-source` → real-time facility search with filters
+- `API-patch-page` → live status updates in Notion
 - `API-post-page` → instant facility creation
 - Auto-sync on startup → Notion always reflects real-world hours
 
@@ -222,7 +239,11 @@ The vision: every facility, every city, every country in the region.
 
 ---
 
-**The mother in Bépanda shouldn't have to walk in the dark.**
+The mother in Bépanda should not have to walk in the dark to find care.
+
+**With HealthNearby AI, she won't.**
+
+And this is just the beginning.
 
 ---
 
