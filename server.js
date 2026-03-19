@@ -165,7 +165,16 @@ function parsePage(page) {
 }
 
 function detectIntent(msg) {
-  const m = msg.toLowerCase();
+  const m = msg.toLowerCase().trim();
+  // Greetings / smalltalk — do NOT query Notion
+  const greetings = ['salut','bonjour','bonsoir','hello','hi ','hey ','how are','merci',
+                     'thank','what is','who are','help me','what can','tell me about you'];
+  if (greetings.some(g => m === g || m.startsWith(g + ' '))) return 'chat';
+  if (m.length < 15 && !m.includes('pharmacy') && !m.includes('hospital') &&
+      !m.includes('pharmacie') && !m.includes('hôpital') && !m.includes('find') &&
+      !m.includes('trouver') && !m.includes('open') && !m.includes('ouvert'))
+    return 'chat';
+
   if (m.includes('mark') || m.includes('update') || m.includes('set') ||
       m.includes('close') || m.includes('change') || m.includes('marquer') ||
       m.includes('fermer') || m.includes('ouvrir') || m.includes('modifier'))
@@ -178,9 +187,21 @@ function detectIntent(msg) {
 }
 
 function detectLanguage(msg) {
-  const frWords = ['trouver','chercher','pharmacie','hôpital','ouvert','fermé',
-                   'accepte','ajouter','marquer','maintenant','qui','avec','dans'];
-  return frWords.filter(w => msg.toLowerCase().includes(w)).length >= 1 ? 'fr' : 'en';
+  const m = msg.toLowerCase();
+  // Only trigger FR if the user WRITES in French (verbs, articles, accented words)
+  // Proper nouns like "Hôpital X" in an English sentence should NOT trigger FR
+  const frVerbs = ['trouver','chercher','ajouter','marquer','montrer','afficher',
+                   'ouvrir','fermer','créer','modifier','donner','montrez','trouvez'];
+  const frArticles = ['\bles\b','\bdes\b','\bune\b','\bdu\b','\bau\b',
+                      '\bma\b','\bmon\b','\bton\b','\bsa\b'];
+  const frAdverbs = ['maintenant','maintenant','actuellement','maintenant','quels','quelles'];
+  const frGreeting = ['salut','bonjour','bonsoir','merci','comment','est-ce','puis-je'];
+
+  const allFR = [...frVerbs, ...frAdverbs, ...frGreeting];
+  const frScore = allFR.filter(w => new RegExp('\\b' + w + '\\b').test(m)).length
+    + frArticles.filter(p => new RegExp(p).test(m)).length;
+
+  return frScore >= 1 ? 'fr' : 'en';
 }
 
 function buildFilter(msg) {
@@ -251,6 +272,19 @@ app.post('/api/chat', async (req, res) => {
     let prompt = '';
     let notionUrl = null;
 
+    // ── CHAT / SMALLTALK ──────────────────────────────────────────────────────────
+    if (intent === 'chat') {
+      const langLine = lang === 'fr'
+        ? 'IMPORTANT: You MUST respond entirely in French.'
+        : 'IMPORTANT: You MUST respond entirely in English.';
+      const aiPrompt = `You are HealthNearby AI, a friendly healthcare assistant for Cameroon. ${langLine}
+The user said: "${message}"
+This is a greeting or general question — do NOT list facilities.
+Respond naturally and briefly. Mention you can help find healthcare facilities, check opening hours, and update facility status via Notion MCP.`;
+      const response = await callAI(aiPrompt);
+      return res.json({ response, mcpActions: [], notionUrl: null, lang, bestPick: null });
+    }
+
     // ── QUERY ──────────────────────────────────────────────────────────────────
     let facilities = [];
     if (intent === 'query') {
@@ -269,13 +303,21 @@ app.post('/api/chat', async (req, res) => {
         has_more: result.has_more
       };
 
-      facilities = (result.results || []).map(parsePage);
+      const allFacilities = (result.results || []).map(parsePage);
+      // Deduplicate by name+city
+      const seen = new Set();
+      facilities = allFacilities.filter(f => {
+        const key = f.name + '|' + f.city;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       const m = message.toLowerCase();
       if (m.includes('open') || m.includes('ouvert') || m.includes('right now') || m.includes('maintenant')) {
         facilities = facilities.filter(f => f.is_open);
       }
 
-      const langLine = lang === 'fr' ? 'Réponds en français.' : 'Reply in English.';
+      const langLine = lang === 'fr' ? 'IMPORTANT: You MUST respond entirely in French.' : 'IMPORTANT: You MUST respond entirely in English. Do NOT use French.';
 
       if (facilities.length === 0) {
         prompt = `You are HealthNearby AI. ${langLine}
@@ -349,7 +391,7 @@ Show top 5. End with best recommendation from the list only.`;
         mcpActions[1].raw_response = { status: updated.object, id: updated.id };
         notionUrl = match.notion_url;
 
-        const langLine = lang === 'fr' ? 'Réponds en français.' : 'Reply in English.';
+        const langLine = lang === 'fr' ? 'IMPORTANT: You MUST respond entirely in French.' : 'IMPORTANT: You MUST respond entirely in English. Do NOT use French.';
         prompt = `You are HealthNearby AI. ${langLine}
 User: "${message}"
 Updated "${match.name}" (${match.neighborhood}, ${match.city}) in Notion via ${usingRealMCP ? 'MCP protocol' : 'API'}.
@@ -357,7 +399,7 @@ Changes: ${JSON.stringify(updates)}.
 Status: ${updated.object === 'page' ? 'SUCCESS ✅' : 'ERROR ❌'}.
 Confirm clearly with new status.`;
       } else {
-        const langLine = lang === 'fr' ? 'Réponds en français.' : 'Reply in English.';
+        const langLine = lang === 'fr' ? 'IMPORTANT: You MUST respond entirely in French.' : 'IMPORTANT: You MUST respond entirely in English. Do NOT use French.';
         prompt = `You are HealthNearby AI. ${langLine}
 User wanted to update: "${message}" but no matching facility found.
 Ask for more specific facility name.`;
@@ -408,7 +450,7 @@ Type: Pharmacy/Hospital/Clinic/Laboratory/Health center`;
       mcpActions[0].raw_response = { status: created.object, id: created.id };
       if (created.id) notionUrl = `https://www.notion.so/${created.id.replace(/-/g, '')}`;
 
-      const langLine = lang === 'fr' ? 'Réponds en français.' : 'Reply in English.';
+      const langLine = lang === 'fr' ? 'IMPORTANT: You MUST respond entirely in French.' : 'IMPORTANT: You MUST respond entirely in English. Do NOT use French.';
       prompt = `You are HealthNearby AI. ${langLine}
 User: "${message}"
 Created in Notion via ${usingRealMCP ? 'MCP protocol' : 'API'}: ${JSON.stringify(fd)}.
