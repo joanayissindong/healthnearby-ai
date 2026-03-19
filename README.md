@@ -3,7 +3,7 @@
 > **This is not a chatbot.**
 > **This is a live AI operating system that reads, updates, and controls real-world healthcare data — powered by Notion MCP.**
 
-🎥 **Demo Video:** *(coming soon)*
+🎥 **Demo Video:** *(included in DEV submission)*
 📸 **Live App:** `http://localhost:3000` (after setup)
 
 Built for the [Notion MCP Challenge](https://dev.to/challenges/notion-2026-03-04) · DEV Community · March 2026
@@ -50,6 +50,8 @@ Remove MCP — the system stops working. It is not decorative.
 - 🧠 **AI as a decision system** — recommends the best option based on real-time reliability + availability + payment method
 - 🔄 **Live system, not a static demo** — every action updates Notion in real-time, auto-syncs every 30 minutes
 - 🗺️ **Complete product experience** — interactive map, facility inspector, MCP timeline, AI decision panel, emergency mode
+
+- 🚀 **Built under real constraints** — designed for low-connectivity environments and mobile-first usage
 
 > This is not a prototype.
 > This is a working system that could be deployed today.
@@ -222,6 +224,9 @@ Types: Hospitals · Clinics · Pharmacies · Laboratories · Health Centers
 
 > "Most projects use MCP to read data.
 > HealthNearby uses MCP to operate a live system."
+
+MCP is not an integration layer here.
+It is the execution layer of the system.
 
 - `API-query-data-source` → real-time facility search with filters
 - `API-patch-page` → live status updates in Notion
