@@ -80,11 +80,19 @@ async function notionUpdate(pageId, properties) {
 }
 
 async function notionCreate(properties) {
+  const body = { parent: { database_id: DATABASE_ID }, properties };
+  console.log('📝 Creating page with props:', JSON.stringify(Object.keys(properties)));
   const res = await fetch('https://api.notion.com/v1/pages', {
     method: 'POST', headers: NOTION_HEADERS,
-    body: JSON.stringify({ parent: { database_id: DATABASE_ID }, properties })
+    body: JSON.stringify(body)
   });
-  return res.json();
+  const data = await res.json();
+  if (data.object === 'error') {
+    console.error('❌ Notion create error:', data.status, data.code, data.message);
+  } else {
+    console.log('✅ Notion create success:', data.id);
+  }
+  return data;
 }
 
 // ─── Smart router: MCP first, fallback to direct API ──────────────────────────
@@ -169,7 +177,7 @@ function detectIntent(msg) {
   // Greetings / smalltalk — do NOT query Notion
   const greetings = ['salut','bonjour','bonsoir','hello','hi ','hey ','how are','merci',
                      'thank','what is','who are','help me','what can','tell me about you'];
-  if (greetings.some(g => m === g || m.startsWith(g + ' '))) return 'chat';
+  if (greetings.some(g => m.startsWith(g) || m === g.trim())) return 'chat';
   if (m.length < 15 && !m.includes('pharmacy') && !m.includes('hospital') &&
       !m.includes('pharmacie') && !m.includes('hôpital') && !m.includes('find') &&
       !m.includes('trouver') && !m.includes('open') && !m.includes('ouvert'))
@@ -424,11 +432,10 @@ Type: Pharmacy/Hospital/Clinic/Laboratory/Health center`;
 
       const today = new Date().toISOString().split('T')[0];
       const props = {
-        "Name":                { title:      [{ text: { content: fd.name } }] },
-        "City":                { select:      { name: fd.city }               },
-        "Type":                { select:      { name: fd.type }               },
-        "Neighborhood":        { rich_text:  [{ text: { content: fd.neighborhood || '' } }] },
-        "Phone":               { phone_number: fd.phone || ''                 },
+        "Name":                { title:      [{ text: { content: fd.name || 'New Facility' } }] },
+        "City":                { select:      { name: fd.city || 'Douala' }                     },
+        "Type":                { select:      { name: fd.type || 'Pharmacy' }                   },
+        "Neighborhood":        { rich_text:  [{ text: { content: fd.neighborhood || '' } }]     },
         "Is_Open_Now":         { checkbox: false },
         "Is_On_Duty":          { checkbox: false },
         "Accepts_MTN_MoMo":    { checkbox: !!fd.momo },
@@ -439,6 +446,8 @@ Type: Pharmacy/Hospital/Clinic/Laboratory/Health center`;
         "Reliability_Score":   { number: 75 },
         "Last_Updated":        { date: { start: today } }
       };
+      // Only add phone if provided — empty string causes Notion 400 error
+      if (fd.phone && fd.phone.trim()) props["Phone"] = { phone_number: fd.phone.trim() };
 
       mcpActions.push({
         tool: usingRealMCP ? 'notion:create_page [MCP]' : 'notion:create_page [API]',
@@ -447,6 +456,9 @@ Type: Pharmacy/Hospital/Clinic/Laboratory/Health center`;
       });
 
       const created = await createPage(props);
+      if (created.object === 'error') {
+        console.error('Notion create error:', JSON.stringify(created));
+      }
       mcpActions[0].raw_response = { status: created.object, id: created.id };
       if (created.id) notionUrl = `https://www.notion.so/${created.id.replace(/-/g, '')}`;
 

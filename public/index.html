@@ -188,6 +188,33 @@
     .insp-btn.secondary { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
     .insp-btn.secondary:hover { border-color: var(--blue); color: var(--blue); }
 
+    /* ── WELCOME MODAL ── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 560px; width: 90%; box-shadow: 0 0 60px rgba(16,185,129,.15); }
+    .modal-logo { font-size: 36px; margin-bottom: 12px; }
+    .modal-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .modal-title span { color: var(--green); }
+    .modal-sub { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 24px; }
+    .modal-sub strong { color: var(--text); }
+    .modal-scenarios { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .scenario { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: all .2s; display: flex; align-items: flex-start; gap: 12px; }
+    .scenario:hover { border-color: var(--green); background: var(--green-dim); transform: translateX(4px); }
+    .scenario-icon { font-size: 22px; flex-shrink: 0; margin-top: 1px; }
+    .scenario-content { flex: 1; }
+    .scenario-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 3px; }
+    .scenario-label.query  { color: var(--blue); }
+    .scenario-label.update { color: var(--amber); }
+    .scenario-label.create { color: var(--green); }
+    .scenario-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .scenario-desc  { font-size: 11px; color: var(--text2); }
+    .scenario-arrow { color: var(--text3); font-size: 16px; flex-shrink: 0; align-self: center; transition: transform .2s; }
+    .scenario:hover .scenario-arrow { transform: translateX(4px); color: var(--green); }
+    .modal-footer { display: flex; align-items: center; justify-content: space-between; }
+    .modal-skip { font-size: 12px; color: var(--text3); cursor: pointer; background: none; border: none; transition: color .15s; }
+    .modal-skip:hover { color: var(--text2); }
+    .modal-badge { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; }
+    .modal-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: pulse 1.8s infinite; }
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -565,5 +592,76 @@
   document.querySelectorAll('.quick-chip.en').forEach(b => b.style.display = 'flex');
   document.querySelectorAll('.quick-chip.fr').forEach(b => b.style.display = 'none');
 </script>
+<!-- WELCOME MODAL -->
+<div class="modal-overlay" id="welcomeModal">
+  <div class="modal">
+    <div class="modal-logo">🏥</div>
+    <div class="modal-title">Welcome to <span>HealthNearby AI</span></div>
+    <div class="modal-sub">
+      A live AI system that reads, updates, and creates healthcare data in real-time —
+      powered by <strong>Notion MCP</strong>.<br><br>
+      Click a scenario below to see it in action:
+    </div>
+    <div class="modal-scenarios">
+      <div class="scenario" onclick="runScenario('query')">
+        <div class="scenario-icon">🔍</div>
+        <div class="scenario-content">
+          <div class="scenario-label query">Query via MCP</div>
+          <div class="scenario-title">Find an open pharmacy right now</div>
+          <div class="scenario-desc">11 PM in Douala — find a pharmacy open NOW that accepts MTN MoMo. Watch the AI query Notion in real-time.</div>
+        </div>
+        <div class="scenario-arrow">›</div>
+      </div>
+      <div class="scenario" onclick="runScenario('update')">
+        <div class="scenario-icon">🔄</div>
+        <div class="scenario-content">
+          <div class="scenario-label update">Update via MCP</div>
+          <div class="scenario-title">Mark a facility as closed</div>
+          <div class="scenario-desc">Update a pharmacy status in Notion live. The reliability score auto-adjusts. Verify the change directly in Notion.</div>
+        </div>
+        <div class="scenario-arrow">›</div>
+      </div>
+      <div class="scenario" onclick="runScenario('create')">
+        <div class="scenario-icon">➕</div>
+        <div class="scenario-content">
+          <div class="scenario-label create">Create via MCP</div>
+          <div class="scenario-title">Add a new healthcare facility</div>
+          <div class="scenario-desc">Add a brand new pharmacy to the Notion database via MCP. It becomes instantly searchable.</div>
+        </div>
+        <div class="scenario-arrow">›</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-skip" onclick="closeModal()">Skip intro — explore freely</button>
+      <div class="modal-badge"><div class="dot"></div> 200 facilities · 6 cities · 22 MCP tools</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SCENARIOS = {
+    query:  "Find an open pharmacy in Douala that accepts MTN MoMo right now",
+    update: "Mark Pharmacie de Garde Nkongmondo as closed",
+    create: "Add a new pharmacy: Pharmacie Lumière, Akwa Douala, accepts MoMo and Orange Money, open 08:00-22:00"
+  };
+
+  function runScenario(type) {
+    closeModal();
+    setTimeout(() => send(SCENARIOS[type]), 300);
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('welcomeModal');
+    modal.style.opacity = '0';
+    modal.style.transition = 'opacity .3s';
+    setTimeout(() => modal.style.display = 'none', 300);
+  }
+
+  // Auto-show modal on load
+  window.addEventListener('load', () => {
+    document.getElementById('welcomeModal').style.display = 'flex';
+  });
+</script>
+
 </body>
 </html>
