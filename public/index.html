@@ -188,6 +188,45 @@
     .insp-btn.secondary { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
     .insp-btn.secondary:hover { border-color: var(--blue); color: var(--blue); }
 
+    /* ── SPLASH SCREEN ── */
+    .splash { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity .5s; }
+    .splash-logo { font-size: 52px; animation: splashPulse 1.5s ease infinite; }
+    @keyframes splashPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+    .splash-title { font-size: 24px; font-weight: 800; color: var(--text); }
+    .splash-title span { color: var(--green); }
+    .splash-steps { display: flex; flex-direction: column; gap: 6px; width: 280px; }
+    .splash-step { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 8px; opacity: 0; transition: opacity .3s; }
+    .splash-step.active { opacity: 1; color: var(--text2); }
+    .splash-step.done { color: var(--green); }
+    .splash-step .step-icon { width: 16px; text-align: center; }
+    .splash-bar { width: 280px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .splash-bar-fill { height: 100%; background: var(--green); border-radius: 2px; width: 0%; transition: width .4s ease; }
+
+    /* ── EMERGENCY MODE ── */
+    .emergency-btn { background: var(--red-dim); border: 1px solid var(--red); border-radius: 8px; padding: 5px 14px; font-size: 12px; font-weight: 700; color: var(--red); cursor: pointer; transition: all .2s; animation: emergencyPulse 2s infinite; }
+    .emergency-btn:hover { background: var(--red); color: #fff; }
+    .emergency-btn.active { background: var(--red); color: #fff; box-shadow: 0 0 20px rgba(239,68,68,.4); }
+    @keyframes emergencyPulse { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)} 50%{box-shadow:0 0 0 6px rgba(239,68,68,0)} }
+    body.emergency header { border-bottom-color: var(--red); box-shadow: 0 0 30px rgba(239,68,68,.2); }
+    body.emergency .col-center { box-shadow: inset 0 0 60px rgba(239,68,68,.05); }
+
+    /* ── TIMELINE ANIMATION ── */
+    .tl-entry { animation: slideIn .4s ease forwards; opacity: 0; }
+    @keyframes slideIn { from { transform: translateX(-12px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+    /* ── MICRO-INTERACTIONS ── */
+    .hero-btn:active, .insp-btn:active, .quick-chip:active, .scenario:active { transform: scale(0.96); }
+    .hero-btn { transition: all .15s, transform .08s; }
+    .quick-chip { transition: all .15s, transform .08s; }
+
+    /* ── AI AVATAR GLOW ── */
+    .msg.ai .msg-avatar { box-shadow: 0 0 0 0 rgba(16,185,129,.4); animation: avatarGlow 2.5s infinite; }
+    @keyframes avatarGlow { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.4)} 50%{box-shadow:0 0 0 6px rgba(16,185,129,0)} }
+
+    /* ── STREAMING CURSOR ── */
+    .streaming::after { content: '▋'; animation: blink .7s infinite; color: var(--green); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
     /* ── WELCOME MODAL ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
     .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 32px; max-width: 560px; width: 90%; box-shadow: 0 0 60px rgba(16,185,129,.15); }
@@ -230,6 +269,7 @@
     <div class="header-sub">Healthcare Agent — Cameroon</div>
   </div>
   <div class="header-right">
+      <button class="emergency-btn" id="emergencyBtn" onclick="toggleEmergency()">🚨 URGENCE</button>
     <button class="btn-lang" onclick="toggleLang()" id="langBtn">🇫🇷 Français</button>
     <div class="badge-mcp">22 MCP Tools</div>
     <div class="badge-live"><div class="dot"></div>Notion MCP Live</div>
@@ -588,10 +628,78 @@
     inputEl.focus();
   }
 
+  // ── Emergency mode ──
+  let emergencyMode = false;
+  function toggleEmergency() {
+    emergencyMode = !emergencyMode;
+    const btn = document.getElementById('emergencyBtn');
+    btn.classList.toggle('active', emergencyMode);
+    document.body.classList.toggle('emergency', emergencyMode);
+    if (emergencyMode) {
+      const msg = currentLang === 'fr'
+        ? 'Trouver une pharmacie de garde ouverte maintenant — urgence médicale'
+        : 'Find an on-duty pharmacy open right now — medical emergency';
+      setTimeout(() => send(msg), 300);
+    }
+  }
+
+  // ── Streaming effect ──
+  async function streamText(element, text, speed = 12) {
+    element.textContent = '';
+    element.classList.add('streaming');
+    for (let i = 0; i < text.length; i++) {
+      element.textContent += text[i];
+      if (i % 3 === 0) await new Promise(r => setTimeout(r, speed));
+    }
+    element.classList.remove('streaming');
+  }
+
+  // ── Splash screen ──
+  async function runSplash() {
+    const steps = ['s1','s2','s3','s4','s5'];
+    const bar = document.getElementById('splashBar');
+    for (let i = 0; i < steps.length; i++) {
+      await new Promise(r => setTimeout(r, 350));
+      const el = document.getElementById(steps[i]);
+      el.classList.add('active');
+      bar.style.width = ((i+1) / steps.length * 100) + '%';
+      if (i > 0) document.getElementById(steps[i-1]).classList.add('done');
+    }
+    await new Promise(r => setTimeout(r, 400));
+    document.getElementById(steps[steps.length-1]).classList.add('done');
+    await new Promise(r => setTimeout(r, 300));
+    const splash = document.getElementById('splash');
+    splash.style.opacity = '0';
+    setTimeout(() => {
+      splash.style.display = 'none';
+      document.getElementById('welcomeModal').style.display = 'flex';
+    }, 500);
+  }
+
   // Init
   document.querySelectorAll('.quick-chip.en').forEach(b => b.style.display = 'flex');
   document.querySelectorAll('.quick-chip.fr').forEach(b => b.style.display = 'none');
+  // Run splash after DOM is ready
+  window.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('welcomeModal');
+    if (modal) modal.style.display = 'none';
+    runSplash();
+  });
 </script>
+<!-- SPLASH SCREEN -->
+<div id="splash" class="splash">
+  <div class="splash-logo">🏥</div>
+  <div class="splash-title">HealthNearby <span>AI</span></div>
+  <div class="splash-steps">
+    <div class="splash-step" id="s1"><span class="step-icon">⚡</span>Initializing MCP connection...</div>
+    <div class="splash-step" id="s2"><span class="step-icon">🔌</span>Connecting to Notion MCP server...</div>
+    <div class="splash-step" id="s3"><span class="step-icon">🗄️</span>Loading healthcare network (200 facilities)...</div>
+    <div class="splash-step" id="s4"><span class="step-icon">🌍</span>Covering 6 Cameroonian cities...</div>
+    <div class="splash-step" id="s5"><span class="step-icon">✅</span>System ready — 22 MCP tools available</div>
+  </div>
+  <div class="splash-bar"><div class="splash-bar-fill" id="splashBar"></div></div>
+</div>
+
 <!-- WELCOME MODAL -->
 <div class="modal-overlay" id="welcomeModal">
   <div class="modal">
@@ -657,10 +765,7 @@
     setTimeout(() => modal.style.display = 'none', 300);
   }
 
-  // Auto-show modal on load
-  window.addEventListener('load', () => {
-    document.getElementById('welcomeModal').style.display = 'flex';
-  });
+  // Modal shown by splash screen
 </script>
 
 </body>

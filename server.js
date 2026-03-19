@@ -266,6 +266,37 @@ async function updateReliability(pageId, currentScore, action) {
   return newScore;
 }
 
+// ─── Auto-sync Notion with real-time status ───────────────────────────────────
+async function syncNotionStatus() {
+  console.log('🔄 Syncing real-time status to Notion...');
+  try {
+    const result = await notionQuery({}, []);
+    const pages = result.results || [];
+    let updated = 0;
+
+    for (const page of pages) {
+      const f = parsePage(page);
+      const computedOpen = f.is_open;
+      const notionOpen   = page.properties['Is_Open_Now']?.checkbox || false;
+
+      // Only update if different
+      if (computedOpen !== notionOpen) {
+        await notionUpdate(f.id, {
+          'Is_Open_Now': { checkbox: computedOpen },
+          'Last_Updated': { date: { start: new Date().toISOString().split('T')[0] } }
+        });
+        updated++;
+        // Small delay to avoid rate limiting
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    console.log(`✅ Sync complete — ${updated} facilities updated out of ${pages.length}`);
+  } catch (err) {
+    console.error('❌ Sync failed:', err.message);
+  }
+}
+
 // ─── Chat endpoint ─────────────────────────────────────────────────────────────
 app.post('/api/chat', async (req, res) => {
   const { message } = req.body;
@@ -321,7 +352,10 @@ Respond naturally and briefly. Mention you can help find healthcare facilities, 
         return true;
       });
       const m = message.toLowerCase();
-      if (m.includes('open') || m.includes('ouvert') || m.includes('right now') || m.includes('maintenant')) {
+      // Always filter by real-time computed status when open/urgency requested
+      if (m.includes('open') || m.includes('ouvert') || m.includes('right now') ||
+          m.includes('maintenant') || m.includes('emergency') || m.includes('urgence') ||
+          m.includes('on-duty') || m.includes('garde') || m.includes('now')) {
         facilities = facilities.filter(f => f.is_open);
       }
 
@@ -341,14 +375,10 @@ CRITICAL: Use ONLY the facilities in the JSON below. NEVER invent names, phones,
 Notion data (${facilities.length} facilities, open status = real-time UTC+1 Cameroon):
 ${JSON.stringify(facilities.slice(0, 10), null, 2)}
 
-From above data ONLY, list with:
-- Name, neighborhood, city
-- ✅ Open / ❌ Closed
-- 💛 MTN MoMo / 🟠 Orange Money
-- 📞 Phone (exactly as in data)
-- ⭐ Reliability/100
+From the data above ONLY, list each facility:
+**[Name]** — [Neighborhood], [City] | [✅ Open NOW or ❌ Closed] | [💛 MTN MoMo if accepted] [🟠 Orange Money if accepted] | 📞 [phone] | ⭐ [reliability]/100
 
-Show top 5. End with best recommendation from the list only.`;
+Rules: NO duplicate entries. Only show facilities where is_open=true if user asked for open. Show top 5 max. End with 1 clear best recommendation sentence.`;
       }
     }
 
@@ -365,10 +395,24 @@ Show top 5. End with best recommendation from the list only.`;
 
       const facilities = (result.results || []).map(parsePage);
       const m = message.toLowerCase();
-      const match = facilities.find(f =>
-        m.includes(f.name.toLowerCase()) ||
-        f.name.toLowerCase().split(' ').some(w => w.length > 4 && m.includes(w.toLowerCase()))
-      );
+      // Priority 1: exact name match
+      let match = facilities.find(f => m.includes(f.name.toLowerCase()));
+
+      // Priority 2: all significant words present in message
+      if (!match) {
+        match = facilities.find(f => {
+          const words = f.name.toLowerCase().split(' ').filter(w => w.length > 3);
+          return words.length >= 2 && words.every(w => m.includes(w));
+        });
+      }
+
+      // Priority 3: neighborhood match (only if unique enough)
+      if (!match) {
+        match = facilities.find(f =>
+          f.neighborhood && f.neighborhood.length > 4 &&
+          m.includes(f.neighborhood.toLowerCase())
+        );
+      }
 
       if (match) {
         const updates = {};
@@ -397,7 +441,7 @@ Show top 5. End with best recommendation from the list only.`;
 
         const updated = await updatePage(match.id, updates);
         mcpActions[1].raw_response = { status: updated.object, id: updated.id };
-        notionUrl = match.notion_url;
+        notionUrl = `https://www.notion.so/${match.id.replace(/-/g, '')}`;
 
         const langLine = lang === 'fr' ? 'IMPORTANT: You MUST respond entirely in French.' : 'IMPORTANT: You MUST respond entirely in English. Do NOT use French.';
         prompt = `You are HealthNearby AI. ${langLine}
@@ -512,5 +556,11 @@ initMCP().then(() => {
     console.log(`\n🏥 HealthNearby AI running on http://localhost:${PORT}`);
     console.log(`🔌 Protocol: ${mcpClient ? 'Notion MCP (mcp.notion.com/sse)' : 'Notion REST API (fallback)'}`);
     console.log(`🤖 Groq Llama 3 ready\n`);
+
+    // Sync real-time status to Notion on startup
+    syncNotionStatus();
+
+    // Re-sync every 30 minutes to keep Notion updated
+    setInterval(syncNotionStatus, 30 * 60 * 1000);
   });
 });
