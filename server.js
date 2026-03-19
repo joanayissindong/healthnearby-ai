@@ -315,13 +315,13 @@ app.post('/api/chat', async (req, res) => {
     if (intent === 'chat') {
       const langLine = lang === 'fr'
         ? 'IMPORTANT: You MUST respond entirely in French.'
-        : 'IMPORTANT: You MUST respond entirely in English.';
+        : 'IMPORTANT: You MUST respond entirely in English. Do NOT use French.';
       const aiPrompt = `You are HealthNearby AI, a friendly healthcare assistant for Cameroon. ${langLine}
 The user said: "${message}"
 This is a greeting or general question — do NOT list facilities.
-Respond naturally and briefly. Mention you can help find healthcare facilities, check opening hours, and update facility status via Notion MCP.`;
+Respond naturally and briefly in 2-3 sentences. Mention you can help find healthcare facilities across 6 Cameroonian cities, check real-time opening hours, and update facility status via Notion MCP.`;
       const response = await callAI(aiPrompt);
-      return res.json({ response, mcpActions: [], notionUrl: null, lang, bestPick: null });
+      return res.json({ response, mcpActions: [], notionUrl: null, lang, bestPick: null, facilities: [] });
     }
 
     // ── QUERY ──────────────────────────────────────────────────────────────────
@@ -521,15 +521,21 @@ Confirm with all details. Be clear and friendly.`;
     if (intent === 'query' && typeof facilities !== 'undefined' && facilities.length > 0) {
       const top = facilities[0];
       const reasons = [];
-      if (top.is_open) reasons.push('Open right now');
-      if (top.is_on_duty) reasons.push('On-duty pharmacy (24/7)');
+      if (top.is_on_duty) reasons.push('On-duty pharmacy — open 24/7');
+      else if (top.is_open) reasons.push('Open right now');
       if (top.momo) reasons.push('Accepts MTN MoMo');
       if (top.orange) reasons.push('Accepts Orange Money');
       reasons.push(`Reliability score: ${top.reliability}/100`);
-      bestPick = { name: top.name, neighborhood: top.neighborhood, city: top.city, phone: top.phone, reasons };
+      // Pass full facility data for Hero Card
+      bestPick = {
+        name: top.name, neighborhood: top.neighborhood, city: top.city,
+        phone: top.phone, is_open: top.is_open || top.is_on_duty,
+        is_on_duty: top.is_on_duty, momo: top.momo, orange: top.orange,
+        reliability: top.reliability, reasons
+      };
     }
 
-    res.json({ response, mcpActions, notionUrl, lang, bestPick, protocol: usingRealMCP ? 'MCP' : 'API' });
+    res.json({ response, mcpActions, notionUrl, lang, bestPick, facilities: intent === 'query' ? facilities.slice(0, 50) : [], protocol: usingRealMCP ? 'MCP' : 'API' });
 
   } catch (err) {
     console.error('Error:', err.message);

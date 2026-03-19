@@ -4,6 +4,8 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>HealthNearby AI — Notion MCP Healthcare Agent</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
   <style>
     :root {
       --bg:        #080b12;
@@ -188,6 +190,20 @@
     .insp-btn.secondary { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
     .insp-btn.secondary:hover { border-color: var(--blue); color: var(--blue); }
 
+    /* ── MAP ── */
+    .map-panel { width: 320px; background: var(--bg2); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    #facilityMap { flex: 1; min-height: 300px; }
+    .map-header { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .map-legend { display: flex; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .map-legend-item { font-size: 10px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+    .map-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .map-dot.open   { background: var(--green); box-shadow: 0 0 4px var(--green); }
+    .map-dot.closed { background: var(--red); }
+    .map-dot.duty   { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+    .map-city-tabs { display: flex; gap: 4px; padding: 8px 14px; flex-wrap: wrap; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .map-city-tab { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 2px 9px; font-size: 10px; color: var(--text3); cursor: pointer; transition: all .15s; }
+    .map-city-tab:hover, .map-city-tab.active { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
     /* ── SPLASH SCREEN ── */
     .splash { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; transition: opacity .5s; }
     .splash-logo { font-size: 52px; animation: splashPulse 1.5s ease infinite; }
@@ -226,6 +242,14 @@
     /* ── STREAMING CURSOR ── */
     .streaming::after { content: '▋'; animation: blink .7s infinite; color: var(--green); }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ── LEAFLET POPUP OVERRIDE ── */
+    .map-popup .leaflet-popup-content-wrapper { background: #1a1d2e; border: 1px solid #1f2937; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,.5); padding: 0; }
+    .map-popup .leaflet-popup-content { margin: 0; }
+    .map-popup .leaflet-popup-tip { background: #1a1d2e; }
+    .map-popup .leaflet-popup-close-button { color: #94a3b8; }
+    .leaflet-container { background: #080b12; }
+    #facilityMap { flex: 1; height: 100%; min-height: 400px; }
 
     /* ── WELCOME MODAL ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
@@ -325,13 +349,35 @@
     </div>
   </div>
 
-  <!-- RIGHT: Facility Inspector -->
-  <div class="col-right">
+  <!-- RIGHT: Map + Inspector -->
+  <div class="map-panel">
+    <div class="map-header">
+      <div class="col-header-title">🗺️ Live Map</div>
+      <span style="font-size:10px;color:var(--text3)" id="mapCount">0 facilities</span>
+    </div>
+    <div class="map-legend">
+      <div class="map-legend-item"><div class="map-dot open"></div>Open</div>
+      <div class="map-legend-item"><div class="map-dot duty"></div>On Duty</div>
+      <div class="map-legend-item"><div class="map-dot closed"></div>Closed</div>
+    </div>
+    <div class="map-city-tabs" id="mapCityTabs">
+      <div class="map-city-tab active" onclick="filterMapCity('all')">All</div>
+      <div class="map-city-tab" onclick="filterMapCity('Douala')">Douala</div>
+      <div class="map-city-tab" onclick="filterMapCity('Yaoundé')">Yaoundé</div>
+      <div class="map-city-tab" onclick="filterMapCity('Bafoussam')">Bafoussam</div>
+      <div class="map-city-tab" onclick="filterMapCity('Bamenda')">Bamenda</div>
+    </div>
+    <div id="facilityMap"></div>
+  </div>
+
+  <!-- INSPECTOR (hidden by default, shown on facility click) -->
+  <div class="col-right" id="inspectorPanel" style="display:none">
     <div class="col-header">
-      <div class="col-header-title">🏥 Facility Inspector</div>
+      <div class="col-header-title">🏥 Inspector</div>
+      <button onclick="closeInspector()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">✕</button>
     </div>
     <div id="inspectorContent">
-      <div class="inspector-empty" id="inspectorEmpty">Select a facility to inspect its live details from Notion.</div>
+      <div class="inspector-empty" id="inspectorEmpty">Select a facility to inspect.</div>
     </div>
   </div>
 
@@ -454,7 +500,7 @@
     window._lastPick = pick;
     currentFacility = pick;
     const scoreW = pick.reasons ? Math.min(100, (pick.reliability || 75)) : 75;
-    const isOpen = pick.is_open;
+    const isOpen = pick.is_open || pick.is_on_duty;
     const statusBadge = isOpen
       ? `<span class="hero-badge open">✅ ${currentLang === 'fr' ? 'Ouvert' : 'Open'}</span>`
       : `<span class="hero-badge closed">❌ ${currentLang === 'fr' ? 'Fermé' : 'Closed'}</span>`;
@@ -617,6 +663,7 @@
       } else {
         if (data.mcpActions?.length) addMCPEntry(data.mcpActions);
         if (data.bestPick) addHeroCard(data.bestPick);
+        if (data.facilities?.length) { initMap(); addFacilitiesToMap(data.facilities); }
         addAIMsg(data.response, data.notionUrl);
       }
     } catch (err) {
@@ -628,6 +675,124 @@
     inputEl.focus();
   }
 
+  // ── Map ──
+  let map = null;
+  let mapMarkers = [];
+  let allMapFacilities = [];
+  let currentMapCity = 'all';
+
+  const CITY_COORDS = {
+    'Douala':    [4.0511, 9.7679],
+    'Yaoundé':   [3.8480, 11.5021],
+    'Bafoussam': [5.4737, 10.4175],
+    'Bamenda':   [5.9597, 10.1457],
+    'Garoua':    [9.3017, 13.3972],
+    'Maroua':    [10.5914, 14.3153]
+  };
+
+  function initMap() {
+    if (map) return;
+    map = L.map('facilityMap', { zoomControl: true, attributionControl: false })
+      .setView([5.5, 11.0], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18
+    }).addTo(map);
+
+    // Add city markers as reference
+    Object.entries(CITY_COORDS).forEach(([city, coords]) => {
+      L.marker(coords, {
+        icon: L.divIcon({
+          html: `<div style="background:#1f2937;color:#94a3b8;border:1px solid #374151;border-radius:4px;padding:2px 6px;font-size:9px;white-space:nowrap;">${city}</div>`,
+          className: '', iconAnchor: [20, 10]
+        })
+      }).addTo(map);
+    });
+  }
+
+  function getMarkerColor(f) {
+    if (f.is_on_duty) return '#f59e0b';
+    if (f.is_open) return '#10b981';
+    return '#ef4444';
+  }
+
+  function addFacilitiesToMap(facilities) {
+    if (!map) initMap();
+    allMapFacilities = facilities;
+
+    // Clear old markers
+    mapMarkers.forEach(m => map.removeLayer(m));
+    mapMarkers = [];
+
+    const toShow = currentMapCity === 'all'
+      ? facilities
+      : facilities.filter(f => f.city === currentMapCity);
+
+    document.getElementById('mapCount').textContent = toShow.length + ' facilities';
+
+    toShow.forEach(f => {
+      const baseCoords = CITY_COORDS[f.city];
+      if (!baseCoords) return;
+
+      // Spread markers around city center
+      const jitter = () => (Math.random() - 0.5) * 0.08;
+      const coords = [baseCoords[0] + jitter(), baseCoords[1] + jitter()];
+      const color = getMarkerColor(f);
+      const size = f.is_on_duty ? 14 : 10;
+
+      const icon = L.divIcon({
+        html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #0d1117;box-shadow:0 0 ${f.is_open?6:2}px ${color};cursor:pointer;transition:all .2s;"></div>`,
+        className: '', iconAnchor: [size/2, size/2]
+      });
+
+      const marker = L.marker(coords, { icon })
+        .addTo(map)
+        .bindPopup(`
+          <div style="min-width:180px;font-family:system-ui;background:#1a1d2e;color:#e8e8e8;border-radius:8px;padding:10px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${f.name}</div>
+            <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">📍 ${f.neighborhood}, ${f.city}</div>
+            <div style="font-size:11px;margin-bottom:4px;">${f.is_open ? '✅ Open NOW' : '❌ Closed'} ${f.is_on_duty ? '· 🌙 On Duty' : ''}</div>
+            <div style="font-size:11px;margin-bottom:6px;">${f.momo ? '💛 MTN MoMo' : ''} ${f.orange ? '🟠 Orange Money' : ''}</div>
+            ${f.phone ? `<div style="font-size:11px;color:#3b82f6;margin-bottom:6px;">📞 ${f.phone}</div>` : ''}
+            <div style="font-size:10px;color:#6b7280;">⭐ Reliability: ${f.reliability}/100</div>
+            <button onclick="inspectFacility(window._mapFacilities['${f.id}'])" style="margin-top:8px;background:#10b981;border:none;color:#000;border-radius:5px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;width:100%;">Inspect →</button>
+          </div>
+        `, { className: 'map-popup' })
+        .on('click', () => {
+          inspectFacility(f);
+          showInspector();
+        });
+
+      mapMarkers.push(marker);
+    });
+
+    // Store for popup access
+    window._mapFacilities = {};
+    facilities.forEach(f => window._mapFacilities[f.id] = f);
+
+    // Zoom to filtered city
+    if (currentMapCity !== 'all' && CITY_COORDS[currentMapCity]) {
+      map.setView(CITY_COORDS[currentMapCity], 12);
+    }
+  }
+
+  function filterMapCity(city) {
+    currentMapCity = city;
+    document.querySelectorAll('.map-city-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    addFacilitiesToMap(allMapFacilities);
+  }
+
+  function showInspector() {
+    document.getElementById('inspectorPanel').style.display = 'flex';
+    setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+  }
+
+  function closeInspector() {
+    document.getElementById('inspectorPanel').style.display = 'none';
+    setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+  }
+
   // ── Emergency mode ──
   let emergencyMode = false;
   function toggleEmergency() {
@@ -636,10 +801,13 @@
     btn.classList.toggle('active', emergencyMode);
     document.body.classList.toggle('emergency', emergencyMode);
     if (emergencyMode) {
+      // Emergency: search ALL cities, on-duty only
       const msg = currentLang === 'fr'
-        ? 'Trouver une pharmacie de garde ouverte maintenant — urgence médicale'
-        : 'Find an on-duty pharmacy open right now — medical emergency';
+        ? 'Show all on-duty pharmacies open right now across Cameroon — medical emergency'
+        : 'Show all on-duty pharmacies open right now across Cameroon — medical emergency';
       setTimeout(() => send(msg), 300);
+    } else {
+      document.body.classList.remove('emergency');
     }
   }
 
@@ -683,6 +851,7 @@
   window.addEventListener('DOMContentLoaded', () => {
     const modal = document.getElementById('welcomeModal');
     if (modal) modal.style.display = 'none';
+    initMap();
     runSplash();
   });
 </script>
